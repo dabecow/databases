@@ -1,7 +1,4 @@
-//
-// Created by Andrew on 03.03.2021.
-//
-
+#include <cstring>
 #include "DBMS.h"
 #include "Zap.h"
 #include "iostream"
@@ -10,11 +7,11 @@ DBMS::DBMS(char* filename) {
     controlBlock = new ControlBlock;
     currentBlock = new Block;
 //todo bug
-
     if((fp=fopen(filename, "r+t"))== nullptr) {
+
+        fseek(fp, 0, SEEK_SET);
         std::cout << "Cannot open the file, it will be created." << std::endl;
         fp = fopen(filename, "w+");
-
 
         initControlBlock();
 
@@ -23,11 +20,15 @@ DBMS::DBMS(char* filename) {
             loadNextBlock();
     }
     else {
+        fseek(fp, 0, SEEK_SET);
+
         try {
             fread(controlBlock, sizeof(ControlBlock), 1, fp);
-            loadNextBlock();
             if (!isControlBlockCorrect())
                 throw 20;
+            if (controlBlock->blocksAmount >=0)
+                loadBlock(0);
+
         }
         catch (int e){
             throw 30;
@@ -79,14 +80,9 @@ void DBMS::addZap(Zap *zap) {
     if (controlBlock->blocksAmount == 0 || blockIsFull(currentBlock)) {
         currentBlock = addNewBlock();
         currentBlock->zap_block[0] = *zap;
-
+        saveChanges();
     } else if (!blockIsFull(currentBlock)){
         currentBlock->zap_block[getFreeZapId(currentBlock)] = *zap;
-        saveChanges();
-    } else {
-        saveChanges();
-        currentBlock = addNewBlock();
-        currentBlock->zap_block[0] = *zap;
         saveChanges();
     }
 

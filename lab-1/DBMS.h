@@ -1,6 +1,3 @@
-//
-// Created by Andrew on 03.03.2021.
-//
 #include "fstream"
 #include "ControlBlock.h"
 
