@@ -90,6 +90,7 @@ void DBMS::addZap(Zap *zap) {
 
 void DBMS::changeZapInfo(int id_zachet) {
     int id = getZapIdWithIdZachet(id_zachet);
+
     if (id < 0){
         std::cout << "Error - no student with this id_zachet" << std::endl;
         return;
@@ -100,10 +101,6 @@ void DBMS::changeZapInfo(int id_zachet) {
 
     std::cout << "Enter id_zachet\n>";
     std::cin >> id_zachet;
-    if (getZapIdWithIdZachet(id_zachet) != -1){
-        std::cout << "Error - There is already zap with this id_zachet" << std::endl;
-        return;
-    }
 
     std::cout << "Enter id_gr\n>";
     std::cin >> id_gr;
