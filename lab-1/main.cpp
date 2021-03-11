@@ -47,7 +47,7 @@ int main(int argc, char* argv[]) {
                 }
                     break;
                 case '4':
-                    std::cout << dbms.getAllZapsInStr();
+                    std::cout << dbms.getAllZapsInStr();//todo ошибка тут, появляется после добавления
                     break;
                 case '5':
                     dbms.saveChanges();

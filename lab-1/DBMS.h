@@ -8,10 +8,12 @@
 
 class DBMS {
     FILE *fp;
+    char* filename;
     Block* currentBlock;
     const int BLOCK_LENGTH = 5;
     const char CHECK_SUM[10] = "123456789";
     ControlBlock *controlBlock;
+    bool saved;
 
 private:
     void saveControlBlockInMem();
@@ -21,10 +23,14 @@ private:
     Block* loadNextBlock();
     Block* addNewBlock();
     void initBlock(Block *block);
-    void saveCurrentBlockInMem(Block *block);
+    void saveBlockInMem(Block *block);
     int getFreeZapId(Block* block);
     void loadBlock(int blockId);
+    bool loadFreeBlock();
     int getZapIdWithIdZachet(int id_zachet);
+    void openFile();
+    void closeFile();
+    void addZapToBlock(Zap* zap, Block* block);
 
 public:
     std::string getAllZapsInStr();

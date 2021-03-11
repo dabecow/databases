@@ -1,14 +1,35 @@
 #include <cstring>
 #include "DBMS.h"
-#include "Zap.h"
 #include "iostream"
 
+#define ERR_CTRL_BLCK 20
+#define ERR_FSEEK 30
+#define ERR_NO_FILE 40
+
+
 DBMS::DBMS(char* filename) {
+    fp = nullptr;
     controlBlock = new ControlBlock;
     currentBlock = new Block;
 //todo bug
-    if((fp=fopen(filename, "r+t"))== nullptr) {
+    this->filename = filename;
+    try {
+        openFile();
+        fseek(fp, 0, SEEK_SET);
 
+        try {
+            fread(controlBlock, sizeof(ControlBlock), 1, fp);
+            if (!isControlBlockCorrect())
+                throw ERR_CTRL_BLCK;
+            if (controlBlock->blocksAmount >=0)
+                loadBlock(0);
+
+        }
+        catch (int e){
+            throw ERR_FSEEK;
+        }
+    } catch (int e) {
+        saved = false;
         fseek(fp, 0, SEEK_SET);
         std::cout << "Cannot open the file, it will be created." << std::endl;
         fp = fopen(filename, "w+");
@@ -19,21 +40,8 @@ DBMS::DBMS(char* filename) {
         if (controlBlock->blocksAmount != 0)
             loadNextBlock();
     }
-    else {
-        fseek(fp, 0, SEEK_SET);
 
-        try {
-            fread(controlBlock, sizeof(ControlBlock), 1, fp);
-            if (!isControlBlockCorrect())
-                throw 20;
-            if (controlBlock->blocksAmount >=0)
-                loadBlock(0);
-
-        }
-        catch (int e){
-            throw 30;
-        }
-    }
+    closeFile();
 }
 
 void DBMS::initControlBlock() {
@@ -75,17 +83,16 @@ int DBMS::getFreeZapId(Block* block) {
     return -1;
 }
 
+//todo debug the shit
 void DBMS::addZap(Zap *zap) {
-
-    if (controlBlock->blocksAmount == 0 || blockIsFull(currentBlock)) {
+    if (!loadFreeBlock()){
         currentBlock = addNewBlock();
-        currentBlock->zap_block[0] = *zap;
-        saveChanges();
-    } else if (!blockIsFull(currentBlock)){
-        currentBlock->zap_block[getFreeZapId(currentBlock)] = *zap;
-        saveChanges();
+        addZapToBlock(zap, currentBlock);
+    } else {
+        addZapToBlock(zap, currentBlock);
     }
-
+    saved = false;
+    saveChanges();
 }
 
 void DBMS::changeZapInfo(int id_zachet) {
@@ -120,7 +127,7 @@ void DBMS::changeZapInfo(int id_zachet) {
     strncpy(zap->patronymic, patronymic, 30);
 
     currentBlock->zap_block[id] = *zap;
-
+    saved = false;
     saveChanges();
 }
 
@@ -132,7 +139,9 @@ void DBMS::deleteZap(int id_zachet) {
         return;
     }
     currentBlock->zap_block[id].free = true;
-
+    if (currentBlock->full)
+        currentBlock->full = false;
+    saved = false;
     saveChanges();
 }
 
@@ -181,7 +190,8 @@ std::string DBMS::getAllZapsInStr() {
     return answer;
 }
 
-void DBMS::saveCurrentBlockInMem(Block *block) {
+void DBMS::saveBlockInMem(Block *block) {
+    openFile();
     if (!block->full)
         for (int i = 0; i < BLOCK_LENGTH; ++i) {
             if (block->zap_block[i].free) {
@@ -196,6 +206,7 @@ void DBMS::saveCurrentBlockInMem(Block *block) {
     long int offset = sizeof(ControlBlock) + sizeof(Block)*block->id;
     fseek(fp, offset, SEEK_SET);
     fwrite(block, sizeof(Block), 1, fp);
+    closeFile();
 }
 
 bool DBMS::blockIsFull(Block* block) {
@@ -247,6 +258,7 @@ bool DBMS::isControlBlockCorrect() {
 }
 
 Block *DBMS::loadNextBlock() {
+    openFile();
     if (currentBlock != nullptr
     && currentBlock->id + 1 != controlBlock->blocksAmount){
         saveChanges();
@@ -266,25 +278,32 @@ Block *DBMS::loadNextBlock() {
             fread(currentBlock, sizeof(Block), 1, fp);
         }
 
-
+    closeFile();
 }
 
 void DBMS::saveControlBlockInMem() {
+    openFile();
     fseek(fp, 0, SEEK_SET);
     fwrite(controlBlock, sizeof(ControlBlock), 1, fp);
+    closeFile();
 }
 
 void DBMS::saveChanges() {
+    if (saved)
+        return;
     saveControlBlockInMem();
     if (controlBlock->blocksAmount != 0) {
-        saveCurrentBlockInMem(currentBlock);
+        saveBlockInMem(currentBlock);
     }
+    saved = true;
 }
 
 void DBMS::loadBlock(int blockId) {
+    openFile();
     size_t offset = sizeof(ControlBlock) + blockId*sizeof(Block);
     fseek(fp, offset, SEEK_SET);
     fread(currentBlock, sizeof(Block), 1, fp);
+    closeFile();
 }
 
 int DBMS::getZapIdWithIdZachet(int id_zachet) {
@@ -297,6 +316,48 @@ int DBMS::getZapIdWithIdZachet(int id_zachet) {
         loadNextBlock();
     }
     return -1;
+}
+
+void DBMS::openFile() {
+    if (fp == nullptr)
+        fp = fopen(filename, "r+b");
+    if (fp == nullptr)
+        throw ERR_NO_FILE;
+}
+
+void DBMS::closeFile() {
+    if (fp != nullptr)
+        fclose(fp);
+    fp = nullptr;
+}
+
+bool DBMS::loadFreeBlock() {
+    openFile();
+
+    if (controlBlock->blocksAmount != 0){
+        loadBlock(0);
+        for (int i = 0; i < controlBlock->blocksAmount; ++i) {
+            if (!currentBlock->full) {
+                closeFile();
+                return true;
+            }
+            loadNextBlock();
+        }
+    }
+    closeFile();
+    return false;
+
+}
+
+void DBMS::addZapToBlock(Zap *zap, Block* block) {
+    if (!block->full) {
+        block->zap_block[getFreeZapId(block)] = *zap;
+        block->full = true;
+        for (int i = 0; i < BLOCK_LENGTH; ++i) {
+            if (block->zap_block[i].free)
+                block->full = false;
+        }
+    }
 }
 
 
