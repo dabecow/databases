@@ -11,7 +11,6 @@ DBMS::DBMS(char* filename) {
     fp = nullptr;
     controlBlock = new ControlBlock;
     currentBlock = new Block;
-//todo bug
     this->filename = filename;
     try {
         openFile();
@@ -53,6 +52,7 @@ void DBMS::initControlBlock() {
 }
 
 void DBMS::initBlock(Block *block) {
+    memset(block, 0, sizeof(Block));
     block->id = controlBlock->blocksAmount;
     block->full = false;
 
@@ -69,8 +69,6 @@ Block *DBMS::addNewBlock() {
     auto* block = new Block;
     initBlock(block);
     controlBlock->blocksAmount+=1;
-//    currentBlock = block;
-//    saveChanges();
     return block;
 }
 
@@ -83,7 +81,6 @@ int DBMS::getFreeZapId(Block* block) {
     return -1;
 }
 
-//todo debug the shit
 void DBMS::addZap(Zap *zap) {
     if (!loadFreeBlock()){
         currentBlock = addNewBlock();
