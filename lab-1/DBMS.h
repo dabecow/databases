@@ -20,7 +20,7 @@ private:
     bool isControlBlockCorrect();
     void initControlBlock();
     bool blockIsFull(Block* block);
-    Block* loadNextBlock();
+    void loadNextBlock();
     Block* addNewBlock();
     void initBlock(Block *block);
     void saveBlockInMem(Block *block);
@@ -33,6 +33,8 @@ private:
     void addZapToBlock(Zap* zap, Block* block);
 
 public:
+    std::string getZapInStr(Zap* zap);
+    std::string getBlockInStr(Block* block);
     std::string getAllZapsInStr();
     void saveChanges();
     void addStudent();
@@ -40,7 +42,6 @@ public:
     void addZap(Zap *zap);
     void changeZapInfo(int id_zachet);
     void deleteZap(int id_zachet);
-//    Zap* findZap(int id);
 
 };
 

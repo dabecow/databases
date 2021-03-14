@@ -12,6 +12,7 @@ DBMS::DBMS(char* filename) {
     controlBlock = new ControlBlock;
     currentBlock = new Block;
     this->filename = filename;
+    this->saved = true;
     try {
         openFile();
         fseek(fp, 0, SEEK_SET);
@@ -29,9 +30,9 @@ DBMS::DBMS(char* filename) {
         }
     } catch (int e) {
         saved = false;
-        fseek(fp, 0, SEEK_SET);
         std::cout << "Cannot open the file, it will be created." << std::endl;
         fp = fopen(filename, "w+");
+        fseek(fp, 0, SEEK_SET);
 
         initControlBlock();
 
@@ -148,39 +149,7 @@ std::string DBMS::getAllZapsInStr() {
         loadBlock(0);
 
     for (int i = 0; i < controlBlock->blocksAmount; ++i) {
-        answer+= "[Block " + std::to_string(i);
-
-        if (currentBlock->full){
-            answer += ":FULL]\n\n";
-        } else {
-            answer += ":FREE]\n\n";
-        }
-
-        for (int j = 0; j < BLOCK_LENGTH; ++j) {
-
-            answer+="{Zap " + std::to_string(j);
-
-            if (currentBlock->zap_block[j].free)
-                answer+=":FREE}\n";
-            else {
-                answer += ":FULL}\n";
-
-                answer += "id_zachet: " +
-                          std::to_string(currentBlock->zap_block[j].id_zachet) +
-                          "\n";
-                answer += "id_gr: " +
-                          std::to_string(currentBlock->zap_block[j].id_gr) +
-                          "\n";
-                answer += "name: " +
-                          std::string(currentBlock->zap_block[j].surname) +
-                          " " + std::string(currentBlock->zap_block[j].name) +
-                          " " + std::string(currentBlock->zap_block[j].patronymic);
-            }
-            answer += "\n\n";
-
-        }
-
-        answer+="\n\n";
+        answer+= getBlockInStr(currentBlock);
         loadNextBlock();
     }
 
@@ -217,7 +186,6 @@ bool DBMS::blockIsFull(Block* block) {
 }
 
 void DBMS::addStudent() {
-    //todo: check id_zachet if db contains it already
     int id_zachet, id_gr;
     char surname[30], name[20], patronymic[30];
 
@@ -254,7 +222,7 @@ bool DBMS::isControlBlockCorrect() {
             controlBlock->blockLengthInZaps == this->BLOCK_LENGTH;
 }
 
-Block *DBMS::loadNextBlock() {
+void DBMS::loadNextBlock() {
     openFile();
     if (currentBlock != nullptr
     && currentBlock->id + 1 != controlBlock->blocksAmount){
@@ -319,7 +287,7 @@ void DBMS::openFile() {
     if (fp == nullptr)
         fp = fopen(filename, "r+b");
     if (fp == nullptr)
-        throw ERR_NO_FILE;
+        throw std::exception();
 }
 
 void DBMS::closeFile() {
@@ -355,6 +323,46 @@ void DBMS::addZapToBlock(Zap *zap, Block* block) {
                 block->full = false;
         }
     }
+}
+
+std::string DBMS::getZapInStr(Zap* zap) {
+    std::string answer;
+    answer+="{Zap";
+
+    if (zap->free)
+        answer+=":FREE}\n";
+    else {
+        answer += ":FULL}\n";
+
+        answer += "id_zachet: " +
+                  std::to_string(zap->id_zachet) +
+                  "\n";
+        answer += "id_gr: " +
+                  std::to_string(zap->id_gr) +
+                  "\n";
+        answer += "name: " +
+                  std::string(zap->surname) +
+                  " " + std::string(zap->name) +
+                  " " + std::string(zap->patronymic);
+    }
+    answer += "\n\n";
+    return answer;
+}
+
+std::string DBMS::getBlockInStr(Block *block) {
+    std::string answer;
+    answer+= "[Block " + std::to_string(block->id);
+
+    if (currentBlock->full){
+        answer += ":FULL]\n\n";
+    } else {
+        answer += ":FREE]\n\n";
+    }
+    for (int i = 0; i < BLOCK_LENGTH; ++i) {
+        answer+=getZapInStr(&block->zap_block[i]);
+    }
+    answer+="\n\n";
+    return answer;
 }
 
 
