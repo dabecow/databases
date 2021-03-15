@@ -145,6 +145,10 @@ void DBMS::deleteZap(int id_zachet) {
         currentBlock->full = false;
     saved = false;
     saveChanges();
+
+    int blockId = getEmptyBlockId();
+    if (blockId != -1)
+        deleteEmptyBlock(blockId);
 }
 
 std::string DBMS::getAllZapsInStr() {
@@ -162,6 +166,7 @@ std::string DBMS::getAllZapsInStr() {
 
 void DBMS::saveBlockInMem(Block *block) {
     openFile();
+
     if (!block->full)
         for (int i = 0; i < BLOCK_LENGTH; ++i) {
             if (block->zap_block[i].free) {
@@ -173,7 +178,7 @@ void DBMS::saveBlockInMem(Block *block) {
             }
         }
 
-    long int offset = sizeof(ControlBlock) + sizeof(Block)*block->id;
+    size_t offset = sizeof(ControlBlock) + sizeof(Block)*block->id;
     fseek(fp, offset, SEEK_SET);
     fwrite(block, sizeof(Block), 1, fp);
     closeFile();
@@ -226,8 +231,7 @@ bool DBMS::isControlBlockCorrect() {
             controlBlock->blockLengthInZaps == this->BLOCK_LENGTH;
 }
 
-Block * DBMS::loadNextBlock() {
-    Block* block;
+void DBMS::loadNextBlock() {
     openFile();
     if (currentBlock != nullptr
     && currentBlock->id + 1 != controlBlock->blocksAmount){
@@ -391,24 +395,35 @@ int DBMS::getEmptyBlockId() {
 }
 
 bool DBMS::deleteEmptyBlock(int blockId) {
-    closeFile();
+    openFile();
 
     loadBlock(blockId);
 
     if (!blockIsEmpty(currentBlock))
         return false;
 
+    for (int i = blockId; i < controlBlock->blocksAmount - 1; ++i) {
+        loadNextBlock();
+        currentBlock->id = i;
+
+        saveBlockInMem(currentBlock);
+    }
+
+    saved = false;
+
+    controlBlock->blocksAmount--;
+    saveControlBlockInMem();
+
+    closeFile();
+
     int fd = open(filename, O_RDWR);
 
     off_t size = sizeof(ControlBlock) +
-            sizeof(Block) * (controlBlock->blocksAmount - 1);
+                 sizeof(Block) * (controlBlock->blocksAmount);
 
-    Block* tmpBlock;
-    for (int i = blockId; i < controlBlock->blocksAmount; ++i) {
+    ftruncate(fd, size);
 
-    }
-    if (blockId + 1 == controlBlock->blocksAmount)
-        ftruncate(fd, size);
+    return true;
 }
 
 

@@ -20,7 +20,7 @@ private:
     bool isControlBlockCorrect();
     void initControlBlock();
     bool blockIsFull(Block* block);
-    Block * loadNextBlock();
+    void loadNextBlock();
 //    Block* loadNextBlock();
     Block* addNewBlock();
     void initBlock(Block *block);
