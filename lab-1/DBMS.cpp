@@ -1,6 +1,9 @@
 #include <cstring>
+#include <zconf.h>
 #include "DBMS.h"
 #include "iostream"
+#include <unistd.h>
+#include <fcntl.h>
 
 #define ERR_CTRL_BLCK 20
 #define ERR_FSEEK 30
@@ -13,6 +16,7 @@ DBMS::DBMS(char* filename) {
     currentBlock = new Block;
     this->filename = filename;
     this->saved = true;
+
     try {
         openFile();
         fseek(fp, 0, SEEK_SET);
@@ -222,7 +226,8 @@ bool DBMS::isControlBlockCorrect() {
             controlBlock->blockLengthInZaps == this->BLOCK_LENGTH;
 }
 
-void DBMS::loadNextBlock() {
+Block * DBMS::loadNextBlock() {
+    Block* block;
     openFile();
     if (currentBlock != nullptr
     && currentBlock->id + 1 != controlBlock->blocksAmount){
@@ -363,6 +368,47 @@ std::string DBMS::getBlockInStr(Block *block) {
     }
     answer+="\n\n";
     return answer;
+}
+
+bool DBMS::blockIsEmpty(Block *block) {
+    for (int i = 0; i < BLOCK_LENGTH; ++i) {
+        if (!block->zap_block[i].free)
+            return false;
+    }
+    return true;
+}
+
+int DBMS::getEmptyBlockId() {
+    if (controlBlock->blocksAmount == 0)
+        return -1;
+    loadBlock(0);
+    for (int i = 0; i < controlBlock->blocksAmount; ++i) {
+        if (blockIsEmpty(currentBlock))
+            return currentBlock->id;
+        loadNextBlock();
+    }
+    return -1;
+}
+
+bool DBMS::deleteEmptyBlock(int blockId) {
+    closeFile();
+
+    loadBlock(blockId);
+
+    if (!blockIsEmpty(currentBlock))
+        return false;
+
+    int fd = open(filename, O_RDWR);
+
+    off_t size = sizeof(ControlBlock) +
+            sizeof(Block) * (controlBlock->blocksAmount - 1);
+
+    Block* tmpBlock;
+    for (int i = blockId; i < controlBlock->blocksAmount; ++i) {
+
+    }
+    if (blockId + 1 == controlBlock->blocksAmount)
+        ftruncate(fd, size);
 }
 
 

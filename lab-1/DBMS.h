@@ -20,7 +20,8 @@ private:
     bool isControlBlockCorrect();
     void initControlBlock();
     bool blockIsFull(Block* block);
-    void loadNextBlock();
+    Block * loadNextBlock();
+//    Block* loadNextBlock();
     Block* addNewBlock();
     void initBlock(Block *block);
     void saveBlockInMem(Block *block);
@@ -31,6 +32,9 @@ private:
     void openFile();
     void closeFile();
     void addZapToBlock(Zap* zap, Block* block);
+    bool blockIsEmpty(Block* block);
+    int getEmptyBlockId();
+    bool deleteEmptyBlock(int blockId);
 
 public:
     std::string getZapInStr(Zap* zap);
