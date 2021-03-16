@@ -17,10 +17,10 @@ DBMS::DBMS(char* filename) {
     this->filename = filename;
     this->saved = true;
 
-    try {
-        openFile();
-        fseek(fp, 0, SEEK_SET);
+    openFile();
 
+    if (fp != nullptr){
+        fseek(fp, 0, SEEK_SET);
         try {
             fread(controlBlock, sizeof(ControlBlock), 1, fp);
             if (!isControlBlockCorrect())
@@ -32,10 +32,10 @@ DBMS::DBMS(char* filename) {
         catch (int e){
             throw ERR_FSEEK;
         }
-    } catch (int e) {
+    } else {
         saved = false;
         std::cout << "Cannot open the file, it will be created." << std::endl;
-        fp = fopen(filename, "w+");
+        fp = fopen(filename, "w+b");
         fseek(fp, 0, SEEK_SET);
 
         initControlBlock();
@@ -292,11 +292,9 @@ int DBMS::getZapIdWithIdZachet(int id_zachet) {
     return -1;
 }
 
-void DBMS::openFile() {
+void DBMS::openFile(){
     if (fp == nullptr)
         fp = fopen(filename, "r+b");
-    if (fp == nullptr)
-        throw std::exception();
 }
 
 void DBMS::closeFile() {
