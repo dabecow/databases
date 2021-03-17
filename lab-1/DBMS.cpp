@@ -134,21 +134,37 @@ void DBMS::changeZapInfo(int id_zachet) {
 }
 
 void DBMS::deleteZap(int id_zachet) {
-    int id = getZapIdWithIdZachet(id_zachet);
+    openFile();
+    int zapId = getZapIdWithIdZachet(id_zachet);
+    int blockId = currentBlock->id;
 
-    if (id == -1){
+    if (zapId == -1){
         std::cout << "Error - no student with this id_zachet" << std::endl;
         return;
     }
-    currentBlock->zap_block[id].free = true;
-    if (currentBlock->full)
-        currentBlock->full = false;
+
+
+    Zap* zapToInsert = cutLastZap();
+
+    loadBlock(blockId);
+
+    currentBlock->zap_block[zapId].free = true;
+
+    if (zapToInsert == nullptr){
+        if (currentBlock->full)
+            currentBlock->full = false;
+    } else {
+        currentBlock->zap_block[zapId] = *zapToInsert;
+//        memcpy(&currentBlock->zap_block[zapId], zapToInsert, sizeof(Block));
+    }
+
     saved = false;
+
     saveChanges();
 
-    int blockId = getEmptyBlockId();
-    if (blockId != -1)
-        deleteEmptyBlock(blockId);
+    closeFile();
+//    moveZapsToFreeSpace();
+
 }
 
 std::string DBMS::getAllZapsInStr() {
@@ -184,15 +200,15 @@ void DBMS::saveBlockInMem(Block *block) {
     closeFile();
 }
 
-bool DBMS::blockIsFull(Block* block) {
-    for (int i = 0; i < BLOCK_LENGTH; ++i) {
-        if (block->zap_block[i].free)
-            return false;
-    }
-    block->full = true;
-    saveChanges();
-    return true;
-}
+//bool DBMS::blockIsFull(Block* block) {
+//    for (int i = 0; i < BLOCK_LENGTH; ++i) {
+//        if (block->zap_block[i].free)
+//            return false;
+//    }
+//    block->full = true;
+//    saveChanges();
+//    return true;
+//}
 
 void DBMS::addStudent() {
     int id_zachet, id_gr;
@@ -380,39 +396,120 @@ bool DBMS::blockIsEmpty(Block *block) {
     return true;
 }
 
-int DBMS::getEmptyBlockId() {
-    if (controlBlock->blocksAmount == 0)
-        return -1;
-    loadBlock(0);
-    for (int i = 0; i < controlBlock->blocksAmount; ++i) {
-        if (blockIsEmpty(currentBlock))
-            return currentBlock->id;
-        loadNextBlock();
-    }
-    return -1;
-}
+//int DBMS::getEmptyBlockId() {
+//    if (controlBlock->blocksAmount == 0)
+//        return -1;
+//    loadBlock(0);
+//    for (int i = 0; i < controlBlock->blocksAmount; ++i) {
+//        if (blockIsEmpty(currentBlock))
+//            return currentBlock->id;
+//        loadNextBlock();
+//    }
+//    return -1;
+//}
 
-bool DBMS::deleteEmptyBlock(int blockId) {
+//bool DBMS::deleteEmptyBlock(int blockId) {
+//    if (blockId == -1)
+//        return false;
+//
+//    openFile();
+//
+//    loadBlock(blockId);
+//
+//    if (!blockIsEmpty(currentBlock))
+//        return false;
+//
+//    for (int i = blockId; i < controlBlock->blocksAmount - 1; ++i) {
+//        loadNextBlock();
+//        currentBlock->id = i;
+//
+//        saveBlockInMem(currentBlock);
+//    }
+//
+//    saved = false;
+//
+//    controlBlock->blocksAmount--;
+//    saveControlBlockInMem();
+//
+//    closeFile();
+//
+//    int fd = open(filename, O_RDWR);
+//
+//    off_t size = sizeof(ControlBlock) +
+//                 sizeof(Block) * (controlBlock->blocksAmount);
+//
+//    ftruncate(fd, size);
+//
+//    return true;
+//}
+
+//int DBMS::getBlockIdCanMoveZaps() {
+//    openFile();
+//    loadBlock(0);
+//    for (int i = 0; i < controlBlock->blocksAmount; ++i) {
+//        if (!blockIsFull(currentBlock) &&
+//        currentBlock->id != controlBlock->blocksAmount - 1){
+//            return  currentBlock->id;
+//        }
+//        loadNextBlock();
+//    }
+//    closeFile();
+//    return -1;
+//}
+
+//void DBMS::moveZapsToFreeSpace() {
+//    int freeBlockId = getBlockIdCanMoveZaps();
+//
+//    if (freeBlockId == -1)
+//        return;
+//
+//    Zap* zap = cutLastZap();
+//
+//    openFile();
+//
+//    loadBlock(freeBlockId);
+//
+//    memcpy(&currentBlock->
+//    zap_block[getFreeZapId(currentBlock)], zap, sizeof(Zap));
+//
+//    saveBlockInMem(currentBlock);
+//    rearrangeBlocks();
+//    closeFile();
+//}
+
+Zap *DBMS::cutLastZap() {
+
+    Zap* zap = nullptr;
+
+    if (controlBlock->blocksAmount < 2)
+        return nullptr;
+
     openFile();
 
-    loadBlock(blockId);
+    loadBlock(controlBlock->blocksAmount-1);
 
-    if (!blockIsEmpty(currentBlock))
-        return false;
-
-    for (int i = blockId; i < controlBlock->blocksAmount - 1; ++i) {
-        loadNextBlock();
-        currentBlock->id = i;
-
-        saveBlockInMem(currentBlock);
+    for (int i = BLOCK_LENGTH - 1; i >= 0; --i) {
+        if (!currentBlock->zap_block[i].free){
+            zap = new Zap;
+            memcpy(zap, &currentBlock->zap_block[i], sizeof(Block));
+            currentBlock->zap_block[i].free = true;
+            saveBlockInMem(currentBlock);
+            if (blockIsEmpty(currentBlock))
+                deleteLastBlockFromMem();
+            break;
+        }
     }
 
-    saved = false;
-
-    controlBlock->blocksAmount--;
-    saveControlBlockInMem();
 
     closeFile();
+    return zap;
+}
+
+void DBMS::deleteLastBlockFromMem() {
+
+    controlBlock->blocksAmount-=1;
+
+    saveControlBlockInMem();
 
     int fd = open(filename, O_RDWR);
 
@@ -421,8 +518,21 @@ bool DBMS::deleteEmptyBlock(int blockId) {
 
     ftruncate(fd, size);
 
-    return true;
+    close(fd);
 }
+
+//void DBMS::rearrangeBlocks() {
+//    openFile();
+//
+//    deleteEmptyBlock(getEmptyBlockId());
+//    for (int i = 0; i < controlBlock->blocksAmount; ++i) {
+//        loadBlock(i);
+//        currentBlock->id = i;
+//        saveBlockInMem(currentBlock);
+//    }
+//
+//    closeFile();
+//}
 
 
 

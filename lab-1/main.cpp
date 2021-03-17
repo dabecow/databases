@@ -20,12 +20,12 @@ int main(int argc, char* argv[]) {
 
     if(argc < 2) {
         std::cout << "Usage: DBMS <file name>" << std::endl;
-        return 1;
+//        return 1;
     }
 
     try {
-        DBMS dbms(argv[1]);
-//        DBMS dbms("db");
+//        DBMS dbms(argv[1]);
+        DBMS dbms("db");
         while (true){
             showMenu();
             switch (getChoice()){
@@ -47,7 +47,7 @@ int main(int argc, char* argv[]) {
                 }
                     break;
                 case '4':
-                    std::cout << dbms.getAllZapsInStr();//todo ошибка тут, появляется после добавления
+                    std::cout << dbms.getAllZapsInStr();
                     break;
                 case '5':
                     dbms.saveChanges();
