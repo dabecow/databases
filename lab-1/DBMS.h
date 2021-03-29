@@ -19,30 +19,22 @@ private:
     void saveControlBlockInMem();
     bool isControlBlockCorrect();
     void initControlBlock();
-//    bool blockIsFull(Block* block);
     void loadNextBlock();
-//    Block* loadNextBlock();
     Block* addNewBlock();
     void initBlock(Block *block);
     void saveBlockInMem(Block *block);
     int getFreeZapId(Block* block);
     void loadBlock(int blockId);
-    bool loadFreeBlock();
     int getZapIdWithIdZachet(int id_zachet);
     void openFile();
     void closeFile();
     void addZapToBlock(Zap* zap, Block* block);
     bool blockIsEmpty(Block* block);
-//    int getEmptyBlockId();
-//    bool deleteEmptyBlock(int blockId);
-//    int getBlockIdCanMoveZaps();
-//    void moveZapsToFreeSpace();
     Zap* cutLastZap();
-//    void rearrangeBlocks();
     void deleteLastBlockFromMem();
 
 public:
-    std::string getZapInStr(Zap* zap);
+    static std::string getZapInStr(Zap* zap);
     std::string getBlockInStr(Block* block);
     std::string getAllZapsInStr();
     void saveChanges();
