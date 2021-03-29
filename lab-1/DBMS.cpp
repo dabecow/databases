@@ -1,5 +1,4 @@
 #include <cstring>
-#include <zconf.h>
 #include "DBMS.h"
 #include "iostream"
 #include <unistd.h>
@@ -7,7 +6,6 @@
 
 #define ERR_CTRL_BLCK 20
 #define ERR_FSEEK 30
-#define ERR_NO_FILE 40
 
 
 DBMS::DBMS(char* filename) {
@@ -87,11 +85,17 @@ int DBMS::getFreeZapId(Block* block) {
 }
 
 void DBMS::addZap(Zap *zap) {
-    if (!loadFreeBlock()){
+    if (controlBlock->blocksAmount == 0){
         currentBlock = addNewBlock();
         addZapToBlock(zap, currentBlock);
     } else {
-        addZapToBlock(zap, currentBlock);
+        loadBlock(controlBlock->blocksAmount - 1);
+        if (currentBlock->full) {
+            currentBlock = addNewBlock();
+            addZapToBlock(zap, currentBlock);
+        } else {
+            addZapToBlock(zap, currentBlock);
+        }
     }
     saved = false;
     saveChanges();
@@ -134,21 +138,39 @@ void DBMS::changeZapInfo(int id_zachet) {
 }
 
 void DBMS::deleteZap(int id_zachet) {
-    int id = getZapIdWithIdZachet(id_zachet);
+    openFile();
+    int zapId = getZapIdWithIdZachet(id_zachet);
+    int blockId = currentBlock->id;
 
-    if (id == -1){
+    if (zapId == -1){
         std::cout << "Error - no student with this id_zachet" << std::endl;
         return;
     }
-    currentBlock->zap_block[id].free = true;
-    if (currentBlock->full)
-        currentBlock->full = false;
+
+    Zap* zapToInsert = cutLastZap();
+
+    loadBlock(blockId);
+
+    currentBlock->zap_block[zapId].free = true;
+
+    if (zapToInsert == nullptr){
+        if (currentBlock->full)
+            currentBlock->full = false;
+    } else {
+        currentBlock->zap_block[zapId] = *zapToInsert;
+    }
+
     saved = false;
     saveChanges();
 
-    int blockId = getEmptyBlockId();
-    if (blockId != -1)
-        deleteEmptyBlock(blockId);
+    loadBlock(controlBlock->blocksAmount - 1);
+
+
+    if (blockIsEmpty(currentBlock))
+        deleteLastBlockFromMem();
+
+
+    closeFile();
 }
 
 std::string DBMS::getAllZapsInStr() {
@@ -184,15 +206,7 @@ void DBMS::saveBlockInMem(Block *block) {
     closeFile();
 }
 
-bool DBMS::blockIsFull(Block* block) {
-    for (int i = 0; i < BLOCK_LENGTH; ++i) {
-        if (block->zap_block[i].free)
-            return false;
-    }
-    block->full = true;
-    saveChanges();
-    return true;
-}
+
 
 void DBMS::addStudent() {
     int id_zachet, id_gr;
@@ -303,31 +317,15 @@ void DBMS::closeFile() {
     fp = nullptr;
 }
 
-bool DBMS::loadFreeBlock() {
-    openFile();
-
-    if (controlBlock->blocksAmount != 0){
-        loadBlock(0);
-        for (int i = 0; i < controlBlock->blocksAmount; ++i) {
-            if (!currentBlock->full) {
-                closeFile();
-                return true;
-            }
-            loadNextBlock();
-        }
-    }
-    closeFile();
-    return false;
-
-}
-
 void DBMS::addZapToBlock(Zap *zap, Block* block) {
     if (!block->full) {
         block->zap_block[getFreeZapId(block)] = *zap;
         block->full = true;
         for (int i = 0; i < BLOCK_LENGTH; ++i) {
-            if (block->zap_block[i].free)
+            if (block->zap_block[i].free) {
                 block->full = false;
+                break;
+            }
         }
     }
 }
@@ -380,39 +378,38 @@ bool DBMS::blockIsEmpty(Block *block) {
     return true;
 }
 
-int DBMS::getEmptyBlockId() {
-    if (controlBlock->blocksAmount == 0)
-        return -1;
-    loadBlock(0);
-    for (int i = 0; i < controlBlock->blocksAmount; ++i) {
-        if (blockIsEmpty(currentBlock))
-            return currentBlock->id;
-        loadNextBlock();
-    }
-    return -1;
-}
+Zap *DBMS::cutLastZap() {
 
-bool DBMS::deleteEmptyBlock(int blockId) {
+    Zap* zap = nullptr;
+
+    if (controlBlock->blocksAmount < 2 || currentBlock->id == controlBlock->blocksAmount-1)
+        return nullptr;
+
     openFile();
 
-    loadBlock(blockId);
+    loadBlock(controlBlock->blocksAmount-1);
 
-    if (!blockIsEmpty(currentBlock))
-        return false;
-
-    for (int i = blockId; i < controlBlock->blocksAmount - 1; ++i) {
-        loadNextBlock();
-        currentBlock->id = i;
-
-        saveBlockInMem(currentBlock);
+    for (int i = BLOCK_LENGTH - 1; i >= 0; --i) {
+        if (!currentBlock->zap_block[i].free){
+            zap = new Zap;
+            memcpy(zap, &currentBlock->zap_block[i], sizeof(Block));
+            currentBlock->zap_block[i].free = true;
+            currentBlock->full = false;
+            saveBlockInMem(currentBlock);
+            break;
+        }
     }
 
-    saved = false;
-
-    controlBlock->blocksAmount--;
-    saveControlBlockInMem();
 
     closeFile();
+    return zap;
+}
+
+void DBMS::deleteLastBlockFromMem() {
+
+    controlBlock->blocksAmount-=1;
+
+    saveControlBlockInMem();
 
     int fd = open(filename, O_RDWR);
 
@@ -421,10 +418,8 @@ bool DBMS::deleteEmptyBlock(int blockId) {
 
     ftruncate(fd, size);
 
-    return true;
+    close(fd);
 }
-
-
 
 
 
