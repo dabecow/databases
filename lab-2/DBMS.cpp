@@ -4,9 +4,9 @@
 #include "Zap.h"
 
 int DBMS::HashFunction(int value) {
-    return value / 10;
+    return value / NUMBER_OF_BUKKITS;
 }
-
+//записываем нулевой блок, есть таблица из 5 элтов - нулей, когда добавляем запись - смотрим
 DBMS::DBMS(char *filename){
     fp = nullptr;
     controlBlock = new ControlBlock;
@@ -36,7 +36,7 @@ DBMS::DBMS(char *filename){
 
         initControlBlock();
 
-        fwrite(controlBlock, sizeof(ControlBlock), 1, this->fp);
+        saveControlBlockInMem();
 //        if (controlBlock->blocksAmount != 0)
 //            loadNextBlock();
     }
@@ -58,10 +58,17 @@ void DBMS::closeFile() {
 void DBMS::initControlBlock() {
     auto* cb = new ControlBlock;
     strcpy(cb->Relation_scheme, RELATION_SCHEME);
-    for (int i = 0; i < 10; ++i) {
-        cb->hashTableOffsets[i] =  sizeof(ControlBlock) + sizeof(Block) * BLOCKS_IN_BUKKIT;
-
+    for (int i = 0; i < 5; ++i) {
+        cb->hashTableFirstBlockOffsets[i] = 0;
+        cb->hashTableLastBlockOffsets[i] = 0;
     }
+}
+
+void DBMS::saveControlBlockInMem() {
+    openFile();
+    fseek(fp, 0, SEEK_SET);
+    fwrite(controlBlock, sizeof(ControlBlock), 1, fp);
+    closeFile();
 }
 
 void DBMS::addStudent() {
@@ -70,7 +77,7 @@ void DBMS::addStudent() {
 
     std::cout << "Enter id_zachet\n>";
     std::cin >> id_zachet;
-    if (getZapWithIdZachet(id_zachet) != nullptr){
+    if (getBlockWithIdZachet(id_zachet)){
         std::cout << "Error - There is already zap with this id_zachet" << std::endl;
         return;
     }
@@ -92,62 +99,220 @@ void DBMS::addStudent() {
     strncpy(zap->name, name, 20);
     strncpy(zap->patronymic, patronymic, 30);
 
-    if (loadFreeBlockToStoreZap(zap))
-        addZap(zap);
-    else std::cout << "Error - no free space for such zap" << std::endl;
+
+    addZap(zap);
+
 }
 
-Zap * DBMS::getZapWithIdZachet(int id_zachet) {
-    openFile();
-    
-    size_t offset = HashFunction(id_zachet) * sizeof(Block) * BLOCKS_IN_BUKKIT;
-
-
-    for (int i = 0; i < BLOCKS_IN_BUKKIT; ++i) {
-        loadBlock(offset);
-        for (int j = 0; j < ZAPS_IN_BLOCK; ++j) {
-            if (currentBlock->Zap_block[j].id_zachet == id_zachet) {
-                closeFile();
-                return &currentBlock->Zap_block[j];
-            }
-        }
-    }
-    
-    
-    closeFile();
-    return nullptr;
-}
-
-void DBMS::initBlock(Block *block) {
+/* Инициализирует блок, выдавая ему смещение и номер
+ * его бакета
+ *
+ */
+Block * DBMS::initBlock(int bukkitNumber) {
+    Block* block = new Block;
     memset(block, 0, sizeof(Block));
-//    block->id = controlBlock->blocksAmount;
+
     block->filled = false;
 
     Zap *zap = new Zap[5];
     for (int i = 0; i < 5; ++i) {
         zap[i].filled = false;
     }
+    //calcualte offset
+    fseek(fp, 0, SEEK_END);
+    size_t offset = ftell(fp);
+
+    block->bukkitNumber = bukkitNumber;
+    block->offset = offset;
+    block->NextBlockOffset = 0;
     memcpy(block->Zap_block, zap, sizeof(Zap) * 5);
+    return block;
+
 }
 
-bool DBMS::loadFreeBlockToStoreZap(Zap *zap) {
-    openFile();
-    size_t offset = HashFunction(zap->id_zachet) * sizeof(Block) * BLOCKS_IN_BUKKIT;
-    for (int i = 0; i < BLOCKS_IN_BUKKIT; ++i) {
-        offset +=sizeof(Block);
-        loadBlock(offset);
-        if (!currentBlock->filled)
-            return true;
+void DBMS::addZap(Zap *zap) {
+    int bukkitNumber = HashFunction(zap->id_zachet);
+    if (controlBlock->hashTableLastBlockOffsets[bukkitNumber] == 0){
+        //если нет блоков вообще
+        Block* block = initBlock(bukkitNumber);
+        block->Zap_block[0] = *zap;
+        saveBlockInMem(block);
+        controlBlock->hashTableFirstBlockOffsets[bukkitNumber] = block->offset;
+        controlBlock->hashTableLastBlockOffsets[bukkitNumber] = block->offset;
+        saveControlBlockInMem();
+    } else {
+        //загружаем последний блок и смотрим его
+        Block* block =
+                loadBlock(controlBlock->hashTableLastBlockOffsets[bukkitNumber]);
+        int freeZapId = getFreeZapId(block);
+        if (freeZapId != -1){
+            //есть место под запись - вносим запись
+            block->Zap_block[freeZapId] = *zap;
+            saveBlockInMem(block);
+        } else {
+            //создаем новый блок и вносим запись туда
+            Block* newBlock = initBlock(bukkitNumber);
+            block->NextBlockOffset = newBlock->offset;
+            saveBlockInMem(block);
+
+            newBlock->Zap_block[0] = *zap;
+            saveBlockInMem(newBlock);
+
+            controlBlock->hashTableLastBlockOffsets[bukkitNumber] = newBlock->offset;
+            saveControlBlockInMem();
+        }
+    }
+}
+
+/*
+ * Проверяет все блоки баккета на содержание такой зачетки
+ */
+Block * DBMS::getBlockWithIdZachet(int id_zachet) {
+    int bukkitNum = HashFunction(id_zachet);
+    int firstOffset = controlBlock->hashTableFirstBlockOffsets[bukkitNum];
+    if (firstOffset == 0){
+        return nullptr;
+    }
+    Block* block = loadBlock(firstOffset);
+    while (true){
+        if (getZapIdWithIdZachet(block, id_zachet) != -1)
+            return block;
+
+        if (block->NextBlockOffset == 0)
+            return nullptr;
+        block = loadBlock(block->NextBlockOffset);
+    }
+}
+
+
+std::string DBMS::getZapInStr(Zap *zap) {
+    std::string answer;
+    answer+="{Zap";
+
+    if (!zap->filled)
+        answer+=":NOT FILLED}\n";
+    else {
+        answer += ":FILLED}\n";
+
+        answer += "id_zachet: " +
+                  std::to_string(zap->id_zachet) +
+                  "\n";
+        answer += "id_gr: " +
+                  std::to_string(zap->id_gr) +
+                  "\n";
+        answer += "name: " +
+                  std::string(zap->surname) +
+                  " " + std::string(zap->name) +
+                  " " + std::string(zap->patronymic);
+    }
+    answer += "\n\n";
+    return answer;
+}
+
+std::string DBMS::getBlockInStr(Block *block) {
+    std::string answer;
+    answer+= "[Block]";
+
+    if (currentBlock->filled){
+        answer += ":FILLED]\n\n";
+    } else {
+        answer += ":NOT FILLED]\n\n";
+    }
+    for (int i = 0; i < ZAPS_IN_BLOCK; ++i) {
+        answer+=getZapInStr(&block->Zap_block[i]);
+    }
+    answer+="\n\n";
+    return answer;
+}
+
+std::string DBMS::getAllZapsInStr() {
+    std::string answer;
+    for (int i = 0; i < NUMBER_OF_BUKKITS; ++i) {
+        answer+=getBukkitInStr(i);
+    }
+    return answer;
+}
+
+void DBMS::changeStudentInfo(int id_zachet) {
+    Block* block = getBlockWithIdZachet(id_zachet);
+    if (block == nullptr){
+        std::cout << "Error - no such zaps" << std::endl;
+        return;
     }
 
-    return false;
+    int id = getZapIdWithIdZachet(block, id_zachet);
+    std::cout << "found:\n"
+    << getZapInStr(&block->Zap_block[id]);
+
+    int id_gr;
+    char surname[30], name[20], patronymic[30];
+
+    std::cout << "Enter id_gr\n>";
+    std::cin >> id_gr;
+    std::cout << "Enter surname\n>";
+    std::cin >> surname;
+    std::cout << "Enter name\n>";
+    std::cin >> name;
+    std::cout << "Enter patronymic\n>";
+    std::cin >> patronymic;
+
+    block->Zap_block[id].id_gr = id_gr;
+    strncpy(block->Zap_block[id].surname, surname, 30);
+    strncpy(block->Zap_block[id].name, name, 20);
+    strncpy(block->Zap_block[id].patronymic, patronymic, 30);
+
+    std::cout << "Success!" << std::endl;
+    saveBlockInMem(block);
 }
 
-void DBMS::loadBlock(size_t offset) {
+int DBMS::getZapIdWithIdZachet(Block *block, int id_zachet) {
+    for (int i = 0; i < ZAPS_IN_BLOCK; ++i) {
+        if (block->Zap_block[i].id_zachet == id_zachet)
+            return i;
+    }
+    return -1;
+}
+
+Block *DBMS::loadBlock(size_t offset) {
     openFile();
-
+    auto* block = new Block;
     fseek(fp, offset, SEEK_SET);
-    fread(currentBlock, sizeof(Block), 1, fp);
+    fread(block, sizeof(Block), 1, fp);
+    closeFile();
+    return block;
+}
 
+void DBMS::saveBlockInMem(Block *block) {
+    openFile();
+    fseek(fp, block->offset, SEEK_SET);
+    fwrite(block, sizeof(Block), 1, fp);
     closeFile();
 }
+
+int DBMS::getFreeZapId(Block *block) {
+    for (int i = 0; i < ZAPS_IN_BLOCK; ++i) {
+        if (!block->Zap_block[i].filled)
+            return i;
+    }
+    return -1;
+}
+
+std::string DBMS::getBukkitInStr(int bukkitNumber) {
+    std::string answer;
+    answer+="Bukkit of hash " + std::to_string(bukkitNumber) + "\n\n";
+    if (controlBlock->hashTableFirstBlockOffsets[bukkitNumber] == 0){
+        Block* block =
+                loadBlock(controlBlock->hashTableFirstBlockOffsets[bukkitNumber]);
+        answer += getBlockInStr(block);
+        while (block->NextBlockOffset != 0){
+            block = loadBlock(block->NextBlockOffset);
+            answer+=getBlockInStr(block);
+        }
+
+    }
+
+    return answer;
+}
+
+
+

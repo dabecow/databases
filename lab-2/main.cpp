@@ -7,7 +7,7 @@ char printMenuGetChoice(){
     std::cout << "1. Add student\n"
     << "2. Edit zap\n"
     << "3. Delete zap\n"
-    << "4. Get student by id_zachet\n"
+    << "4. Get all students\n"
     << "q. Quit\n"
     << ">>>";
 
@@ -33,14 +33,18 @@ int main(int argc, char *argv[]) {
                     dbms.addStudent();
                     //add student
                 break;
-                case '2':
-                    //edit zap
+                case '2':{
+                    std::cout << "Enter the id_zachet value\n>";
+                    int id_zachet;
+                    std::cin >> id_zachet;
+                    dbms.changeStudentInfo(id_zachet);
+                }
                     break;
                 case '3':
                     //delete zap
                     break;
                 case '4':
-                    //get student by id_zachet
+                    std::cout << dbms.getAllZapsInStr();
                     break;
             }
         }

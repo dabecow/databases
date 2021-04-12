@@ -14,7 +14,9 @@ struct Zap{
 struct Block{
     bool filled;
     Zap Zap_block[5];
-    int NextB;
+    int bukkitNumber;
+    size_t offset;
+    size_t NextBlockOffset;
 };
 
 #endif //LAB_2_ZAP_H
