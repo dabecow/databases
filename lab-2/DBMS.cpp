@@ -4,7 +4,7 @@
 #include "Zap.h"
 
 int DBMS::HashFunction(int value) {
-    return value % NUMBER_OF_BUKKITS;
+    return value % NUMBER_OF_BUCKETS;
 }
 //записываем нулевой блок, есть таблица из 5 элтов - нулей, когда добавляем запись - смотрим
 DBMS::DBMS(char *filename){
@@ -109,7 +109,7 @@ void DBMS::addStudent() {
  * его бакета
  *
  */
-Block * DBMS::initBlock(int bukkitNumber) {
+Block * DBMS::initBlock(int bucketNumber) {
     Block* block = new Block;
     memset(block, 0, sizeof(Block));
 
@@ -124,7 +124,7 @@ Block * DBMS::initBlock(int bukkitNumber) {
     fseek(fp, 0, SEEK_END);
     size_t offset = ftell(fp);
     closeFile();
-    block->bukkitNumber = bukkitNumber;
+    block->bucketNumber = bucketNumber;
     block->offset = offset;
     block->NextBlockOffset = 0;
     memcpy(block->Zap_block, zap, sizeof(Zap) * 5);
@@ -133,19 +133,19 @@ Block * DBMS::initBlock(int bukkitNumber) {
 }
 
 void DBMS::addZap(Zap *zap) {
-    int bukkitNumber = HashFunction(zap->id_zachet);
-    if (controlBlock->hashTableLastBlockOffsets[bukkitNumber] == 0){
+    int bucketNumber = HashFunction(zap->id_zachet);
+    if (controlBlock->hashTableLastBlockOffsets[bucketNumber] == 0){
         //если нет блоков вообще
-        Block* block = initBlock(bukkitNumber);
+        Block* block = initBlock(bucketNumber);
         block->Zap_block[0] = *zap;
         saveBlockInMem(block);
-        controlBlock->hashTableFirstBlockOffsets[bukkitNumber] = block->offset;
-        controlBlock->hashTableLastBlockOffsets[bukkitNumber] = block->offset;
+        controlBlock->hashTableFirstBlockOffsets[bucketNumber] = block->offset;
+        controlBlock->hashTableLastBlockOffsets[bucketNumber] = block->offset;
         saveControlBlockInMem();
     } else {
         //если есть - загружаем последний блок и смотрим его
         Block* block =
-                loadBlock(controlBlock->hashTableLastBlockOffsets[bukkitNumber]);
+                loadBlock(controlBlock->hashTableLastBlockOffsets[bucketNumber]);
         int freeZapId = getFreeZapId(block);
         if (freeZapId != -1){
             //есть место под запись - вносим запись
@@ -155,14 +155,14 @@ void DBMS::addZap(Zap *zap) {
             saveBlockInMem(block);
         } else {
             //создаем новый блок и вносим запись туда
-            Block* newBlock = initBlock(bukkitNumber);
+            Block* newBlock = initBlock(bucketNumber);
             block->NextBlockOffset = newBlock->offset;
             saveBlockInMem(block);
 
             newBlock->Zap_block[0] = *zap;
             saveBlockInMem(newBlock);
 
-            controlBlock->hashTableLastBlockOffsets[bukkitNumber] = newBlock->offset;
+            controlBlock->hashTableLastBlockOffsets[bucketNumber] = newBlock->offset;
             saveControlBlockInMem();
         }
     }
@@ -172,8 +172,8 @@ void DBMS::addZap(Zap *zap) {
  * Проверяет все блоки баккета на содержание такой зачетки
  */
 Block * DBMS::getBlockWithIdZachet(int id_zachet) {
-    int bukkitNum = HashFunction(id_zachet);
-    int firstOffset = controlBlock->hashTableFirstBlockOffsets[bukkitNum];
+    int bucketNum = HashFunction(id_zachet);
+    int firstOffset = controlBlock->hashTableFirstBlockOffsets[bucketNum];
     if (firstOffset == 0){
         return nullptr;
     }
@@ -231,8 +231,8 @@ std::string DBMS::getBlockInStr(Block *block) {
 
 std::string DBMS::getAllZapsInStr() {
     std::string answer;
-    for (int i = 0; i < NUMBER_OF_BUKKITS; ++i) {
-        answer+=getBukkitInStr(i);
+    for (int i = 0; i < NUMBER_OF_BUCKETS; ++i) {
+        answer+=getBucketInStr(i);
     }
     return answer;
 }
@@ -301,12 +301,12 @@ int DBMS::getFreeZapId(Block *block) {
     return -1;
 }
 
-std::string DBMS::getBukkitInStr(int bukkitNumber) {
+std::string DBMS::getBucketInStr(int bucketNumber) {
     std::string answer;
-    answer+="Bukkit of hash " + std::to_string(bukkitNumber) + "\n\n";
-    if (controlBlock->hashTableFirstBlockOffsets[bukkitNumber] != 0){
+    answer+= "Bucket of hash " + std::to_string(bucketNumber) + "\n\n";
+    if (controlBlock->hashTableFirstBlockOffsets[bucketNumber] != 0){
         Block* block =
-                loadBlock(controlBlock->hashTableFirstBlockOffsets[bukkitNumber]);
+                loadBlock(controlBlock->hashTableFirstBlockOffsets[bucketNumber]);
         answer += getBlockInStr(block);
         while (block->NextBlockOffset != 0){
             block = loadBlock(block->NextBlockOffset);
