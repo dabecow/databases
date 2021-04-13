@@ -16,7 +16,8 @@ struct Block{
     Zap Zap_block[5];
     int bucketNumber;
     size_t offset;
-    size_t NextBlockOffset;
+    int NextBlockOffset;
+    int PrevBlockOffset;
 };
 
 #endif //LAB_2_ZAP_H

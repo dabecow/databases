@@ -16,7 +16,6 @@ private:
     FILE *fp;
     char* filename;
     ControlBlock* controlBlock;
-    bool saved;
 
     const int NUMBER_OF_BUCKETS = 5;
     const char RELATION_SCHEME[255] = "Type Zap = recordId_zachet,\n id_gr: integer;\nSurname, Name: string (20);\nPatronymic: string(30);End;\n\nType Block = recordZap_block: array[1..5] of zap; End;\0";
@@ -34,6 +33,10 @@ private:
     int getZapIdWithIdZachet(Block* block, int id_zachet);
     void saveBlockInMem(Block* block);
     int getFreeZapId(Block* block);
+    bool blockIsEmpty(Block* block);
+    Zap *cutLastZap(int bucketNumber);
+    void deleteBlock(Block* blockToDelete);
+
 public:
     DBMS(char *filename);
     std::string getBucketInStr(int bucketNumber);

@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
                     std::cout << "Enter the id_zachet value\n>";
                     int id_zachet;
                     std::cin >> id_zachet;
-                    dbms.changeStudentInfo(id_zachet);
+                    dbms.deleteStudent(id_zachet);
                     break;
                 case '4':
                     std::cout << dbms.getAllZapsInStr();

@@ -1,17 +1,19 @@
 #include <iostream>
 #include <cstring>
+#include <unistd.h>
+#include <fcntl.h>
 #include "DBMS.h"
-#include "Zap.h"
+
+#define NO_BLOCK -1
 
 int DBMS::HashFunction(int value) {
     return value % NUMBER_OF_BUCKETS;
 }
-//записываем нулевой блок, есть таблица из 5 элтов - нулей, когда добавляем запись - смотрим
+
 DBMS::DBMS(char *filename){
     fp = nullptr;
     controlBlock = new ControlBlock;
     this->filename = filename;
-    this->saved = true;
 
     openFile();
 
@@ -21,14 +23,11 @@ DBMS::DBMS(char *filename){
             fread(controlBlock, sizeof(ControlBlock), 1, fp);
             if (strcmp(controlBlock->Relation_scheme, this->RELATION_SCHEME) != 0)
                 throw 2;
-//            if (controlBlock->blocksAmount >=0)
-//                loadBlock(0);
         }
         catch (int e){
             throw 1;
         }
     } else {
-//        saved = false;
 
         std::cout << "Cannot open the file, it will be created." << std::endl;
         fp = fopen(filename, "w+b");
@@ -37,8 +36,6 @@ DBMS::DBMS(char *filename){
         initControlBlock();
 
         saveControlBlockInMem();
-//        if (controlBlock->blocksAmount != 0)
-//            loadNextBlock();
     }
 
     closeFile();
@@ -60,8 +57,8 @@ void DBMS::initControlBlock() {
     memcpy(controlBlock->Relation_scheme, RELATION_SCHEME, sizeof (char[255]));
 
     for (int i = 0; i < 5; ++i) {
-        controlBlock->hashTableFirstBlockOffsets[i] = 0;
-        controlBlock->hashTableLastBlockOffsets[i] = 0;
+        controlBlock->hashTableFirstBlockOffsets[i] = NO_BLOCK;
+        controlBlock->hashTableLastBlockOffsets[i] = NO_BLOCK;
     }
 }
 
@@ -105,12 +102,12 @@ void DBMS::addStudent() {
 
 }
 
-/* Инициализирует блок, выдавая ему смещение и номер
+/* Инициализирует блок, выдавая ему смещения и номер
  * его бакета
  *
  */
 Block * DBMS::initBlock(int bucketNumber) {
-    Block* block = new Block;
+    auto* block = new Block;
     memset(block, 0, sizeof(Block));
 
     block->filled = false;
@@ -126,7 +123,18 @@ Block * DBMS::initBlock(int bucketNumber) {
     closeFile();
     block->bucketNumber = bucketNumber;
     block->offset = offset;
-    block->NextBlockOffset = 0;
+    block->NextBlockOffset = NO_BLOCK;
+
+
+    if (controlBlock->hashTableLastBlockOffsets[bucketNumber] != NO_BLOCK) {
+        Block* prevBlock = loadBlock(controlBlock->hashTableLastBlockOffsets[bucketNumber]);
+        prevBlock->NextBlockOffset = block->offset;
+        saveBlockInMem(prevBlock);
+        block->PrevBlockOffset = controlBlock->hashTableLastBlockOffsets[bucketNumber];
+    }
+    else
+        block->PrevBlockOffset = NO_BLOCK;
+
     memcpy(block->Zap_block, zap, sizeof(Zap) * 5);
     return block;
 
@@ -134,7 +142,7 @@ Block * DBMS::initBlock(int bucketNumber) {
 
 void DBMS::addZap(Zap *zap) {
     int bucketNumber = HashFunction(zap->id_zachet);
-    if (controlBlock->hashTableLastBlockOffsets[bucketNumber] == 0){
+    if (controlBlock->hashTableLastBlockOffsets[bucketNumber] == NO_BLOCK){
         //если нет блоков вообще
         Block* block = initBlock(bucketNumber);
         block->Zap_block[0] = *zap;
@@ -174,7 +182,7 @@ void DBMS::addZap(Zap *zap) {
 Block * DBMS::getBlockWithIdZachet(int id_zachet) {
     int bucketNum = HashFunction(id_zachet);
     int firstOffset = controlBlock->hashTableFirstBlockOffsets[bucketNum];
-    if (firstOffset == 0){
+    if (firstOffset == NO_BLOCK){
         return nullptr;
     }
     Block* block = loadBlock(firstOffset);
@@ -182,7 +190,7 @@ Block * DBMS::getBlockWithIdZachet(int id_zachet) {
         if (getZapIdWithIdZachet(block, id_zachet) != -1)
             return block;
 
-        if (block->NextBlockOffset == 0)
+        if (block->NextBlockOffset == NO_BLOCK)
             return nullptr;
         block = loadBlock(block->NextBlockOffset);
     }
@@ -230,10 +238,12 @@ std::string DBMS::getBlockInStr(Block *block) {
 }
 
 std::string DBMS::getAllZapsInStr() {
+    openFile();
     std::string answer;
     for (int i = 0; i < NUMBER_OF_BUCKETS; ++i) {
         answer+=getBucketInStr(i);
     }
+    closeFile();
     return answer;
 }
 
@@ -304,11 +314,11 @@ int DBMS::getFreeZapId(Block *block) {
 std::string DBMS::getBucketInStr(int bucketNumber) {
     std::string answer;
     answer+= "Bucket of hash " + std::to_string(bucketNumber) + "\n\n";
-    if (controlBlock->hashTableFirstBlockOffsets[bucketNumber] != 0){
+    if (controlBlock->hashTableFirstBlockOffsets[bucketNumber] != NO_BLOCK){
         Block* block =
                 loadBlock(controlBlock->hashTableFirstBlockOffsets[bucketNumber]);
         answer += getBlockInStr(block);
-        while (block->NextBlockOffset != 0){
+        while (block->NextBlockOffset != NO_BLOCK){
             block = loadBlock(block->NextBlockOffset);
             answer+=getBlockInStr(block);
         }
@@ -317,6 +327,114 @@ std::string DBMS::getBucketInStr(int bucketNumber) {
 
     return answer;
 }
+
+bool DBMS::blockIsEmpty(Block *block) {
+    for (int i = 0; i < ZAPS_IN_BLOCK; ++i) {
+        if (block->Zap_block[i].filled)
+            return false;
+    }
+    return true;
+}
+
+void DBMS::deleteStudent(int id_zachet) {
+    openFile();
+    Block* block = getBlockWithIdZachet(id_zachet);
+
+    if (block == nullptr){
+        std::cout << "There is no student with such id_zachet" << std::endl;
+        return;
+    }
+
+    int zapId = getZapIdWithIdZachet(block, id_zachet);
+
+    if (block->offset != controlBlock->hashTableLastBlockOffsets[block->bucketNumber]) {
+        Zap *zapToInsert = cutLastZap(block->bucketNumber);
+        block->Zap_block[zapId] = *zapToInsert;
+        saveBlockInMem(block);
+    } else {
+        block->Zap_block[zapId].filled = false;
+        block->filled = false;
+        if (blockIsEmpty(block))
+            deleteBlock(block);
+        else
+            saveBlockInMem(block);
+    }
+
+    closeFile();
+}
+
+Zap *DBMS::cutLastZap(int bucketNumber) {
+    Zap* zap = nullptr;
+
+    openFile();
+
+    Block* block = loadBlock(controlBlock->hashTableLastBlockOffsets[bucketNumber]);
+
+
+    for (int i = ZAPS_IN_BLOCK - 1; i >= 0; --i) {
+        if (block->Zap_block[i].filled){
+            zap = new Zap;
+            memcpy(zap, &block->Zap_block[i], sizeof(Block));
+            block->Zap_block[i].filled = false;
+            block->filled = false;
+            if (blockIsEmpty(block))
+                deleteBlock(block);
+            else
+                saveBlockInMem(block);
+            break;
+        }
+    }
+
+
+    closeFile();
+    return zap;
+}
+
+void DBMS::deleteBlock(Block *blockToDelete) {
+    int fd = open(filename, O_RDWR);
+
+    openFile();
+    fseek(fp, 0, SEEK_END);
+    size_t maxOffset = ftell(fp) - sizeof(Block);
+    closeFile();
+
+    if (blockToDelete->offset == maxOffset){
+        //у прошлого заменить ссылку
+        if (blockToDelete->PrevBlockOffset != NO_BLOCK) {
+            Block *prevBlock = loadBlock(blockToDelete->PrevBlockOffset);
+            prevBlock->NextBlockOffset = NO_BLOCK;
+            saveBlockInMem(prevBlock);
+        }
+        if (blockToDelete->offset == controlBlock->hashTableFirstBlockOffsets[blockToDelete->bucketNumber]){
+            controlBlock->hashTableFirstBlockOffsets[blockToDelete->bucketNumber] = NO_BLOCK;
+            saveControlBlockInMem();
+        }
+        if (blockToDelete->offset == controlBlock->hashTableLastBlockOffsets[blockToDelete->bucketNumber]){
+            controlBlock->hashTableLastBlockOffsets[blockToDelete->bucketNumber] = NO_BLOCK;
+            saveControlBlockInMem();
+        }
+        ftruncate(fd, maxOffset);
+    } else {
+        //берем последний блок
+        Block* blockToInsert = loadBlock(maxOffset);
+        if (blockToInsert->PrevBlockOffset != NO_BLOCK){
+            Block* itsPrevBlock = loadBlock(blockToInsert->PrevBlockOffset);
+            itsPrevBlock->NextBlockOffset = blockToDelete->offset;
+            saveBlockInMem(itsPrevBlock);
+        }
+        blockToInsert->offset = blockToDelete->offset;
+        saveBlockInMem(blockToInsert);
+        ftruncate(fd, maxOffset);
+
+        controlBlock->hashTableLastBlockOffsets[blockToInsert->bucketNumber] = blockToInsert->offset;
+        saveControlBlockInMem();
+    }
+
+
+    close(fd);
+}
+
+
 
 
 
