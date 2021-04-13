@@ -143,13 +143,15 @@ void DBMS::addZap(Zap *zap) {
         controlBlock->hashTableLastBlockOffsets[bukkitNumber] = block->offset;
         saveControlBlockInMem();
     } else {
-        //загружаем последний блок и смотрим его
+        //если есть - загружаем последний блок и смотрим его
         Block* block =
                 loadBlock(controlBlock->hashTableLastBlockOffsets[bukkitNumber]);
         int freeZapId = getFreeZapId(block);
         if (freeZapId != -1){
             //есть место под запись - вносим запись
             block->Zap_block[freeZapId] = *zap;
+            if (getFreeZapId(block) == -1)
+                block->filled = true;
             saveBlockInMem(block);
         } else {
             //создаем новый блок и вносим запись туда
@@ -213,7 +215,7 @@ std::string DBMS::getZapInStr(Zap *zap) {
 
 std::string DBMS::getBlockInStr(Block *block) {
     std::string answer;
-    answer+= "[Block]";
+    answer+= "[Block";
 
     if (block->filled){
         answer += ":FILLED]\n\n";

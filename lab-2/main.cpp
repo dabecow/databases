@@ -19,11 +19,9 @@ int main(int argc, char *argv[]) {
 
     if(argc < 2) {
         std::cout << "Usage: DBMS <file name>" << std::endl;
-//        return 1;
     }
 
     try {
-//        DBMS dbms(argv[1]);
         DBMS dbms("db");
 
         char choice;
@@ -42,7 +40,10 @@ int main(int argc, char *argv[]) {
                 }
                     break;
                 case '3':
-                    //delete zap
+                    std::cout << "Enter the id_zachet value\n>";
+                    int id_zachet;
+                    std::cin >> id_zachet;
+                    dbms.changeStudentInfo(id_zachet);
                     break;
                 case '4':
                     std::cout << dbms.getAllZapsInStr();
