@@ -6,7 +6,7 @@
 
 #define NO_BLOCK -1
 
-int DBMS::HashFunction(int value) {
+int DBMS::HashFunction(int value) const {
     return value % NUMBER_OF_BUCKETS;
 }
 
@@ -221,7 +221,7 @@ std::string DBMS::getZapInStr(Zap *zap) {
     return answer;
 }
 
-std::string DBMS::getBlockInStr(Block *block) {
+std::string DBMS::getBlockInStr(Block *block) const {
     std::string answer;
     answer+= "[Block";
 
@@ -279,7 +279,7 @@ void DBMS::changeStudentInfo(int id_zachet) {
     saveBlockInMem(block);
 }
 
-int DBMS::getZapIdWithIdZachet(Block *block, int id_zachet) {
+int DBMS::getZapIdWithIdZachet(Block *block, int id_zachet) const {
     for (int i = 0; i < ZAPS_IN_BLOCK; ++i) {
         if (block->Zap_block[i].id_zachet == id_zachet)
             return i;
@@ -303,7 +303,7 @@ void DBMS::saveBlockInMem(Block *block) {
     closeFile();
 }
 
-int DBMS::getFreeZapId(Block *block) {
+int DBMS::getFreeZapId(Block *block) const {
     for (int i = 0; i < ZAPS_IN_BLOCK; ++i) {
         if (!block->Zap_block[i].filled)
             return i;
@@ -328,7 +328,7 @@ std::string DBMS::getBucketInStr(int bucketNumber) {
     return answer;
 }
 
-bool DBMS::blockIsEmpty(Block *block) {
+bool DBMS::blockIsEmpty(Block *block) const {
     for (int i = 0; i < ZAPS_IN_BLOCK; ++i) {
         if (block->Zap_block[i].filled)
             return false;
@@ -350,7 +350,7 @@ void DBMS::deleteStudent(int id_zachet) {
     if (block->offset != controlBlock->hashTableLastBlockOffsets[block->bucketNumber]) {
         Zap *zapToInsert = cutLastZap(block->bucketNumber);
         block->Zap_block[zapId] = *zapToInsert;
-        saveBlockInMem(block);
+//        saveBlockInMem(block);
     } else {
         block->Zap_block[zapId].filled = false;
         memset(&block->Zap_block[zapId], -1, sizeof (Zap));
@@ -406,8 +406,6 @@ void DBMS::deleteBlock(Block *blockToDelete) {
             Block *prevBlock = loadBlock(blockToDelete->PrevBlockOffset);
             prevBlock->NextBlockOffset = NO_BLOCK;
             saveBlockInMem(prevBlock);
-            prevBlock = loadBlock(prevBlock->offset);
-            std::cout << " ";
         }
         if (blockToDelete->offset == controlBlock->hashTableFirstBlockOffsets[blockToDelete->bucketNumber]){
             controlBlock->hashTableFirstBlockOffsets[blockToDelete->bucketNumber] = NO_BLOCK;
@@ -415,6 +413,8 @@ void DBMS::deleteBlock(Block *blockToDelete) {
         }
         if (blockToDelete->offset == controlBlock->hashTableLastBlockOffsets[blockToDelete->bucketNumber]){
             controlBlock->hashTableLastBlockOffsets[blockToDelete->bucketNumber] = NO_BLOCK;
+            if (blockToDelete->PrevBlockOffset != NO_BLOCK)
+                controlBlock->hashTableLastBlockOffsets[blockToDelete->bucketNumber] = blockToDelete->PrevBlockOffset;
             saveControlBlockInMem();
         }
         ftruncate(fd, maxOffset);

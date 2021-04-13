@@ -23,25 +23,25 @@ private:
 
     void initControlBlock();
     void saveControlBlockInMem();
-    int HashFunction(int value);
+    int HashFunction(int value) const;
     void openFile();
     void closeFile();
     Block* initBlock(int bukkitNumber);
     void addZap(Zap* zap);
     Block* loadBlock(size_t offset);
     Block * getBlockWithIdZachet(int id_zachet);
-    int getZapIdWithIdZachet(Block* block, int id_zachet);
+    int getZapIdWithIdZachet(Block* block, int id_zachet) const;
     void saveBlockInMem(Block* block);
-    int getFreeZapId(Block* block);
-    bool blockIsEmpty(Block* block);
+    int getFreeZapId(Block* block) const;
+    bool blockIsEmpty(Block* block) const;
     Zap *cutLastZap(int bucketNumber);
     void deleteBlock(Block* blockToDelete);
 
 public:
     DBMS(char *filename);
     std::string getBucketInStr(int bucketNumber);
-    std::string getZapInStr(Zap* zap);
-    std::string getBlockInStr(Block* block);
+    static std::string getZapInStr(Zap* zap);
+    std::string getBlockInStr(Block* block) const;
     std::string getAllZapsInStr();
     void addStudent();
     void changeStudentInfo(int id_zachet);
