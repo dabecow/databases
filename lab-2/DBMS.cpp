@@ -349,11 +349,11 @@ void DBMS::deleteStudent(int id_zachet) {
 
     if (block->offset != controlBlock->hashTableLastBlockOffsets[block->bucketNumber]) {
         Zap *zapToInsert = cutLastZap(block->bucketNumber);
+        block = loadBlock(block->offset);
         block->Zap_block[zapId] = *zapToInsert;
-//        saveBlockInMem(block);
+        saveBlockInMem(block); //todo bug here
     } else {
         block->Zap_block[zapId].filled = false;
-        memset(&block->Zap_block[zapId], -1, sizeof (Zap));
         block->filled = false;
         if (blockIsEmpty(block))
             deleteBlock(block);
@@ -426,11 +426,18 @@ void DBMS::deleteBlock(Block *blockToDelete) {
             itsPrevBlock->NextBlockOffset = blockToDelete->offset;
             saveBlockInMem(itsPrevBlock);
         }
+        if (blockToInsert->offset == controlBlock->hashTableFirstBlockOffsets[blockToInsert->bucketNumber]){
+            controlBlock->hashTableFirstBlockOffsets[blockToInsert->bucketNumber] = blockToDelete->offset;
+            saveControlBlockInMem();
+        }
+
         blockToInsert->offset = blockToDelete->offset;
         saveBlockInMem(blockToInsert);
         ftruncate(fd, maxOffset);
 
         controlBlock->hashTableLastBlockOffsets[blockToInsert->bucketNumber] = blockToInsert->offset;
+        if (blockToDelete->offset == controlBlock->hashTableFirstBlockOffsets[blockToDelete->bucketNumber])
+            controlBlock->hashTableFirstBlockOffsets[blockToDelete->bucketNumber] = NO_BLOCK;
         saveControlBlockInMem();
     }
 
