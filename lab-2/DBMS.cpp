@@ -353,6 +353,7 @@ void DBMS::deleteStudent(int id_zachet) {
         saveBlockInMem(block);
     } else {
         block->Zap_block[zapId].filled = false;
+        memset(&block->Zap_block[zapId], -1, sizeof (Zap));
         block->filled = false;
         if (blockIsEmpty(block))
             deleteBlock(block);
@@ -396,6 +397,7 @@ void DBMS::deleteBlock(Block *blockToDelete) {
     openFile();
     fseek(fp, 0, SEEK_END);
     size_t maxOffset = ftell(fp) - sizeof(Block);
+    size_t blockSize = sizeof (Block);
     closeFile();
 
     if (blockToDelete->offset == maxOffset){
@@ -404,6 +406,8 @@ void DBMS::deleteBlock(Block *blockToDelete) {
             Block *prevBlock = loadBlock(blockToDelete->PrevBlockOffset);
             prevBlock->NextBlockOffset = NO_BLOCK;
             saveBlockInMem(prevBlock);
+            prevBlock = loadBlock(prevBlock->offset);
+            std::cout << " ";
         }
         if (blockToDelete->offset == controlBlock->hashTableFirstBlockOffsets[blockToDelete->bucketNumber]){
             controlBlock->hashTableFirstBlockOffsets[blockToDelete->bucketNumber] = NO_BLOCK;

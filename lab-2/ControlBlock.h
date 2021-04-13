@@ -3,7 +3,7 @@
 
 struct ControlBlock {
     char Relation_scheme[255];
-    size_t hashTableFirstBlockOffsets[5];
-    size_t hashTableLastBlockOffsets[5];
+    int hashTableFirstBlockOffsets[5];
+    int hashTableLastBlockOffsets[5];
 };
 #endif //LAB_2_CONTROLBLOCK_H
