@@ -17,10 +17,9 @@ private:
     char* filename;
     ControlBlock* controlBlock;
     bool saved;
-    Block* currentBlock;
 
     const int NUMBER_OF_BUKKITS = 5;
-    const char RELATION_SCHEME[255] = "Type Zap = recordId_zachet,\n id_gr: integer;\nSurname, Name: string (20);\nPatronymic: string(30);End;\n\nType Block = recordZap_block: array[1..5] of zap; End;";
+    const char RELATION_SCHEME[255] = "Type Zap = recordId_zachet,\n id_gr: integer;\nSurname, Name: string (20);\nPatronymic: string(30);End;\n\nType Block = recordZap_block: array[1..5] of zap; End;\0";
     const int ZAPS_IN_BLOCK = 5;
 
     void initControlBlock();

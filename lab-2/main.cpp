@@ -19,11 +19,12 @@ int main(int argc, char *argv[]) {
 
     if(argc < 2) {
         std::cout << "Usage: DBMS <file name>" << std::endl;
-        return 1;
+//        return 1;
     }
 
     try {
-        DBMS dbms(argv[1]);
+//        DBMS dbms(argv[1]);
+        DBMS dbms("db");
 
         char choice;
 

@@ -4,7 +4,7 @@
 #include "Zap.h"
 
 int DBMS::HashFunction(int value) {
-    return value / NUMBER_OF_BUKKITS;
+    return value % NUMBER_OF_BUKKITS;
 }
 //записываем нулевой блок, есть таблица из 5 элтов - нулей, когда добавляем запись - смотрим
 DBMS::DBMS(char *filename){
@@ -56,11 +56,12 @@ void DBMS::closeFile() {
 }
 
 void DBMS::initControlBlock() {
-    auto* cb = new ControlBlock;
-    strcpy(cb->Relation_scheme, RELATION_SCHEME);
+    this->controlBlock = new ControlBlock;
+    memcpy(controlBlock->Relation_scheme, RELATION_SCHEME, sizeof (char[255]));
+
     for (int i = 0; i < 5; ++i) {
-        cb->hashTableFirstBlockOffsets[i] = 0;
-        cb->hashTableLastBlockOffsets[i] = 0;
+        controlBlock->hashTableFirstBlockOffsets[i] = 0;
+        controlBlock->hashTableLastBlockOffsets[i] = 0;
     }
 }
 
@@ -119,9 +120,10 @@ Block * DBMS::initBlock(int bukkitNumber) {
         zap[i].filled = false;
     }
     //calcualte offset
+    openFile();
     fseek(fp, 0, SEEK_END);
     size_t offset = ftell(fp);
-
+    closeFile();
     block->bukkitNumber = bukkitNumber;
     block->offset = offset;
     block->NextBlockOffset = 0;
@@ -213,7 +215,7 @@ std::string DBMS::getBlockInStr(Block *block) {
     std::string answer;
     answer+= "[Block]";
 
-    if (currentBlock->filled){
+    if (block->filled){
         answer += ":FILLED]\n\n";
     } else {
         answer += ":NOT FILLED]\n\n";
@@ -300,7 +302,7 @@ int DBMS::getFreeZapId(Block *block) {
 std::string DBMS::getBukkitInStr(int bukkitNumber) {
     std::string answer;
     answer+="Bukkit of hash " + std::to_string(bukkitNumber) + "\n\n";
-    if (controlBlock->hashTableFirstBlockOffsets[bukkitNumber] == 0){
+    if (controlBlock->hashTableFirstBlockOffsets[bukkitNumber] != 0){
         Block* block =
                 loadBlock(controlBlock->hashTableFirstBlockOffsets[bukkitNumber]);
         answer += getBlockInStr(block);
