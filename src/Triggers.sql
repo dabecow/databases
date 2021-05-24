@@ -203,3 +203,4 @@ DELIMITER ;
     SET MESSAGE_TEXT = 'Студент не находится в этой группе';
     END IF//
     DELIMITER ;
+-- s
