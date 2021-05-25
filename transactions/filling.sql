@@ -1,3 +1,22 @@
+DELIMITER $$
+
+CREATE PROCEDURE add_ticket(title_way VARCHAR(100))
+BEGIN
+	SET @count = (SELECT COUNT(1) FROM Ticket JOIN Way ON Way.num_way = Ticket.num_way WHERE Way.title_way = title_way);
+	IF (SELECT @count < (SELECT Bus.count_places FROM Bus JOIN Rays ON Rays.num_bus = Bus.num_bus JOIN Way ON Way.num_way = Rays.num_way WHERE Way.title_way = title_way)) THEN
+		INSERT INTO Ticket(place, num_way, time_hour, time_min)
+		SELECT DISTINCT (SELECT @count) + 1, Way.num_way, Rays.time_hour, Rays.time_min FROM Way
+		JOIN Station
+		JOIN Rays ON Rays.num_way = Way.num_way
+		WHERE Way.title_way = title_way;
+	ELSE
+		SIGNAL SQLSTATE '45004'
+		SET MESSAGE_TEXT = 'Ошибка! Мест нет!';
+    END IF;
+END$$
+
+DELIMITER ;
+
 -- Way
 -- INSERT INTO Way(title_way) VALUES('');
 INSERT INTO Way(title_way) VALUES('Орел-Курск');
@@ -101,176 +120,45 @@ SELECT DISTINCT Way.num_way, 14, 10, '00000003' FROM Way, Bus
 WHERE Way.title_way = 'Орел-Тула';
 
 -- Ticket
--- INSERT INTO Ticket(place, num_way, time_hour, time_min, num_st)
+-- INSERT INTO Ticket(place, num_way, time_hour, time_min)
 -- SELECT 'place', Way.num_way, Rays.time_hour, Rays.time_min, Station.num_st FROM Way, Station
 -- JOIN Rays ON Rays.num_way = Way.num_way
--- WHERE Way.title_way = '' AND Station.title_st = '';
-INSERT INTO Ticket(place, num_way, time_hour, time_min, num_st)
-SELECT 1, Way.num_way, Rays.time_hour, Rays.time_min, Station.num_st FROM Way
-JOIN Station
-JOIN Rays ON Rays.num_way = Way.num_way
-WHERE Way.title_way = 'Орел-Курск' AND Station.title_st = 'Курск';
-INSERT INTO Ticket(place, num_way, time_hour, time_min, num_st)
-SELECT 2, Way.num_way, Rays.time_hour, Rays.time_min, Station.num_st FROM Way
-JOIN Station
-JOIN Rays ON Rays.num_way = Way.num_way
-WHERE Way.title_way = 'Орел-Курск' AND Station.title_st = 'Курск';
-INSERT INTO Ticket(place, num_way, time_hour, time_min, num_st)
-SELECT 3, Way.num_way, Rays.time_hour, Rays.time_min, Station.num_st FROM Way
-JOIN Station
-JOIN Rays ON Rays.num_way = Way.num_way
-WHERE Way.title_way = 'Орел-Курск' AND Station.title_st = 'Курск';
-INSERT INTO Ticket(place, num_way, time_hour, time_min, num_st)
-SELECT 4, Way.num_way, Rays.time_hour, Rays.time_min, Station.num_st FROM Way
-JOIN Station
-JOIN Rays ON Rays.num_way = Way.num_way
-WHERE Way.title_way = 'Орел-Курск' AND Station.title_st = 'Курск';
-INSERT INTO Ticket(place, num_way, time_hour, time_min, num_st)
-SELECT 5, Way.num_way, Rays.time_hour, Rays.time_min, Station.num_st FROM Way
-JOIN Station
-JOIN Rays ON Rays.num_way = Way.num_way
-WHERE Way.title_way = 'Орел-Курск' AND Station.title_st = 'Курск';
-INSERT INTO Ticket(place, num_way, time_hour, time_min, num_st)
-SELECT 6, Way.num_way, Rays.time_hour, Rays.time_min, Station.num_st FROM Way
-JOIN Station
-JOIN Rays ON Rays.num_way = Way.num_way
-WHERE Way.title_way = 'Орел-Курск' AND Station.title_st = 'Курск';
-INSERT INTO Ticket(place, num_way, time_hour, time_min, num_st)
-SELECT 7, Way.num_way, Rays.time_hour, Rays.time_min, Station.num_st FROM Way
-JOIN Station
-JOIN Rays ON Rays.num_way = Way.num_way
-WHERE Way.title_way = 'Орел-Курск' AND Station.title_st = 'Курск';
-INSERT INTO Ticket(place, num_way, time_hour, time_min, num_st)
-SELECT 8, Way.num_way, Rays.time_hour, Rays.time_min, Station.num_st FROM Way
-JOIN Station
-JOIN Rays ON Rays.num_way = Way.num_way
-WHERE Way.title_way = 'Орел-Курск' AND Station.title_st = 'Курск';
-INSERT INTO Ticket(place, num_way, time_hour, time_min, num_st)
-SELECT 9, Way.num_way, Rays.time_hour, Rays.time_min, Station.num_st FROM Way
-JOIN Station
-JOIN Rays ON Rays.num_way = Way.num_way
-WHERE Way.title_way = 'Орел-Курск' AND Station.title_st = 'Курск';
-INSERT INTO Ticket(place, num_way, time_hour, time_min, num_st)
-SELECT 10, Way.num_way, Rays.time_hour, Rays.time_min, Station.num_st FROM Way
-JOIN Station
-JOIN Rays ON Rays.num_way = Way.num_way
-WHERE Way.title_way = 'Орел-Курск' AND Station.title_st = 'Курск';
-INSERT INTO Ticket(place, num_way, time_hour, time_min, num_st)
-SELECT 1, Way.num_way, Rays.time_hour, Rays.time_min, Station.num_st FROM Way
-JOIN Station
-JOIN Rays ON Rays.num_way = Way.num_way
-WHERE Way.title_way = 'Орел-Ливны' AND Station.title_st = 'Ливны';
-INSERT INTO Ticket(place, num_way, time_hour, time_min, num_st)
-SELECT 2, Way.num_way, Rays.time_hour, Rays.time_min, Station.num_st FROM Way
-JOIN Station
-JOIN Rays ON Rays.num_way = Way.num_way
-WHERE Way.title_way = 'Орел-Ливны' AND Station.title_st = 'Ливны';
-INSERT INTO Ticket(place, num_way, time_hour, time_min, num_st)
-SELECT 3, Way.num_way, Rays.time_hour, Rays.time_min, Station.num_st FROM Way
-JOIN Station
-JOIN Rays ON Rays.num_way = Way.num_way
-WHERE Way.title_way = 'Орел-Ливны' AND Station.title_st = 'Ливны';
-INSERT INTO Ticket(place, num_way, time_hour, time_min, num_st)
-SELECT 4, Way.num_way, Rays.time_hour, Rays.time_min, Station.num_st FROM Way
-JOIN Station
-JOIN Rays ON Rays.num_way = Way.num_way
-WHERE Way.title_way = 'Орел-Ливны' AND Station.title_st = 'Ливны';
-INSERT INTO Ticket(place, num_way, time_hour, time_min, num_st)
-SELECT 5, Way.num_way, Rays.time_hour, Rays.time_min, Station.num_st FROM Way
-JOIN Station
-JOIN Rays ON Rays.num_way = Way.num_way
-WHERE Way.title_way = 'Орел-Ливны' AND Station.title_st = 'Ливны';
-INSERT INTO Ticket(place, num_way, time_hour, time_min, num_st)
-SELECT 6, Way.num_way, Rays.time_hour, Rays.time_min, Station.num_st FROM Way
-JOIN Station
-JOIN Rays ON Rays.num_way = Way.num_way
-WHERE Way.title_way = 'Орел-Ливны' AND Station.title_st = 'Ливны';
-INSERT INTO Ticket(place, num_way, time_hour, time_min, num_st)
-SELECT 7, Way.num_way, Rays.time_hour, Rays.time_min, Station.num_st FROM Way
-JOIN Station
-JOIN Rays ON Rays.num_way = Way.num_way
-WHERE Way.title_way = 'Орел-Ливны' AND Station.title_st = 'Ливны';
-INSERT INTO Ticket(place, num_way, time_hour, time_min, num_st)
-SELECT 8, Way.num_way, Rays.time_hour, Rays.time_min, Station.num_st FROM Way
-JOIN Station
-JOIN Rays ON Rays.num_way = Way.num_way
-WHERE Way.title_way = 'Орел-Ливны' AND Station.title_st = 'Ливны';
-INSERT INTO Ticket(place, num_way, time_hour, time_min, num_st)
-SELECT 9, Way.num_way, Rays.time_hour, Rays.time_min, Station.num_st FROM Way
-JOIN Station
-JOIN Rays ON Rays.num_way = Way.num_way
-WHERE Way.title_way = 'Орел-Ливны' AND Station.title_st = 'Ливны';
-INSERT INTO Ticket(place, num_way, time_hour, time_min, num_st)
-SELECT 10, Way.num_way, Rays.time_hour, Rays.time_min, Station.num_st FROM Way
-JOIN Station
-JOIN Rays ON Rays.num_way = Way.num_way
-WHERE Way.title_way = 'Орел-Ливны' AND Station.title_st = 'Ливны';
-INSERT INTO Ticket(place, num_way, time_hour, time_min, num_st)
-SELECT 1, Way.num_way, Rays.time_hour, Rays.time_min, Station.num_st FROM Way
-JOIN Station
-JOIN Rays ON Rays.num_way = Way.num_way
-WHERE Way.title_way = 'Орел-Малоархангельск' AND Station.title_st = 'Малоархангельск';
-INSERT INTO Ticket(place, num_way, time_hour, time_min, num_st)
-SELECT 2, Way.num_way, Rays.time_hour, Rays.time_min, Station.num_st FROM Way
-JOIN Station
-JOIN Rays ON Rays.num_way = Way.num_way
-WHERE Way.title_way = 'Орел-Малоархангельск' AND Station.title_st = 'Малоархангельск';
-INSERT INTO Ticket(place, num_way, time_hour, time_min, num_st)
-SELECT 3, Way.num_way, Rays.time_hour, Rays.time_min, Station.num_st FROM Way
-JOIN Station
-JOIN Rays ON Rays.num_way = Way.num_way
-WHERE Way.title_way = 'Орел-Малоархангельск' AND Station.title_st = 'Малоархангельск';
-INSERT INTO Ticket(place, num_way, time_hour, time_min, num_st)
-SELECT 4, Way.num_way, Rays.time_hour, Rays.time_min, Station.num_st FROM Way
-JOIN Station
-JOIN Rays ON Rays.num_way = Way.num_way
-WHERE Way.title_way = 'Орел-Малоархангельск' AND Station.title_st = 'Малоархангельск';
-INSERT INTO Ticket(place, num_way, time_hour, time_min, num_st)
-SELECT 5, Way.num_way, Rays.time_hour, Rays.time_min, Station.num_st FROM Way
-JOIN Station
-JOIN Rays ON Rays.num_way = Way.num_way
-WHERE Way.title_way = 'Орел-Малоархангельск' AND Station.title_st = 'Малоархангельск';
-INSERT INTO Ticket(place, num_way, time_hour, time_min, num_st)
-SELECT 6, Way.num_way, Rays.time_hour, Rays.time_min, Station.num_st FROM Way
-JOIN Station
-JOIN Rays ON Rays.num_way = Way.num_way
-WHERE Way.title_way = 'Орел-Малоархангельск' AND Station.title_st = 'Малоархангельск';
-INSERT INTO Ticket(place, num_way, time_hour, time_min, num_st)
-SELECT 7, Way.num_way, Rays.time_hour, Rays.time_min, Station.num_st FROM Way
-JOIN Station
-JOIN Rays ON Rays.num_way = Way.num_way
-WHERE Way.title_way = 'Орел-Малоархангельск' AND Station.title_st = 'Малоархангельск';
-INSERT INTO Ticket(place, num_way, time_hour, time_min, num_st)
-SELECT 8, Way.num_way, Rays.time_hour, Rays.time_min, Station.num_st FROM Way
-JOIN Station
-JOIN Rays ON Rays.num_way = Way.num_way
-WHERE Way.title_way = 'Орел-Малоархангельск' AND Station.title_st = 'Малоархангельск';
-INSERT INTO Ticket(place, num_way, time_hour, time_min, num_st)
-SELECT 9, Way.num_way, Rays.time_hour, Rays.time_min, Station.num_st FROM Way
-JOIN Station
-JOIN Rays ON Rays.num_way = Way.num_way
-WHERE Way.title_way = 'Орел-Малоархангельск' AND Station.title_st = 'Малоархангельск';
-INSERT INTO Ticket(place, num_way, time_hour, time_min, num_st)
-SELECT 10, Way.num_way, Rays.time_hour, Rays.time_min, Station.num_st FROM Way
-JOIN Station
-JOIN Rays ON Rays.num_way = Way.num_way
-WHERE Way.title_way = 'Орел-Малоархангельск' AND Station.title_st = 'Малоархангельск';
+-- WHERE Way.title_way = '';
+CALL add_ticket('Орел-Курск');
+CALL add_ticket('Орел-Курск');
+CALL add_ticket('Орел-Курск');
+CALL add_ticket('Орел-Курск');
+CALL add_ticket('Орел-Курск');
+CALL add_ticket('Орел-Курск');
+CALL add_ticket('Орел-Курск');
+CALL add_ticket('Орел-Курск');
+CALL add_ticket('Орел-Курск');
+CALL add_ticket('Орел-Курск');
+
+CALL add_ticket('Орел-Ливны');
+CALL add_ticket('Орел-Ливны');
+CALL add_ticket('Орел-Ливны');
+CALL add_ticket('Орел-Ливны');
+CALL add_ticket('Орел-Ливны');
+CALL add_ticket('Орел-Ливны');
+CALL add_ticket('Орел-Ливны');
+CALL add_ticket('Орел-Ливны');
+CALL add_ticket('Орел-Ливны');
+CALL add_ticket('Орел-Ливны');
+
+CALL add_ticket('Орел-Малоархангельск');
+CALL add_ticket('Орел-Малоархангельск');
+CALL add_ticket('Орел-Малоархангельск');
+CALL add_ticket('Орел-Малоархангельск');
+CALL add_ticket('Орел-Малоархангельск');
+CALL add_ticket('Орел-Малоархангельск');
+CALL add_ticket('Орел-Малоархангельск');
+CALL add_ticket('Орел-Малоархангельск');
+CALL add_ticket('Орел-Малоархангельск');
+CALL add_ticket('Орел-Малоархангельск');
 
 
--- DELIMITER $$
 
--- CREATE PROCEDURE add_ticket(title_way VARCHAR(100))
--- BEGIN
--- 	SET @count = (SELECT COUNT(1) FROM Ticket JOIN Way ON Way.num_way = Ticket.num_way WHERE Way.title_way = title_way);
--- 	IF (@count < (SELECT Bus.count_places FROM Bus JOIN Rays ON Rays.num_bus = Bus.num_bus JOIN Way ON Way.num_way = Rays.num_way WHERE Way.title_way = title_way)) THEN
--- 		INSERT INTO Ticket(place, num_way, time_hour, time_min, num_st)
--- 		SELECT @count + 1, Way.num_way, Rays.time_hour, Rays.time_min, Station.num_st FROM Way, Station
--- 		JOIN Rays ON Rays.num_way = Way.num_way
--- 		WHERE Way.title_way = title_way;
---     END IF;
--- END$$
-
--- DELIMITER ;
 
 -- DROP PROCEDURE add_ticket;
 
