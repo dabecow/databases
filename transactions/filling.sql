@@ -1,6 +1,6 @@
 DELIMITER $$
 
-CREATE PROCEDURE add_ticket(title_way VARCHAR(100))
+CREATE PROCEDURE add_ticket(title_way VARCHAR(45))
 BEGIN
 	SET @count = (SELECT COUNT(1) FROM Ticket JOIN Way ON Way.num_way = Ticket.num_way WHERE Way.title_way = title_way);
 	IF (SELECT @count < (SELECT Bus.count_places FROM Bus JOIN Rays ON Rays.num_bus = Bus.num_bus JOIN Way ON Way.num_way = Rays.num_way WHERE Way.title_way = title_way)) THEN
@@ -16,6 +16,18 @@ BEGIN
 END$$
 
 DELIMITER ;
+
+DELIMITER $$
+
+CREATE PROCEDURE sell_ticket(title_way VARCHAR(45), place INT, title_st VARCHAR(45))
+BEGIN
+	UPDATE Ticket SET Ticket.num_st = (SELECT Station.num_st FROM Station WHERE Station.title_st = title_st) 
+    WHERE Ticket.num_way = (SELECT Way.num_way FROM Way WHERE Way.title_way = title_way) AND Ticket.place = place;
+END$$
+
+DELIMITER ;
+
+-- CALL sell_ticket('Орел-Курск', 1, 'Курск')
 
 -- Way
 -- INSERT INTO Way(title_way) VALUES('');
