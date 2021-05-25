@@ -6,50 +6,50 @@
                б) зафиксировать изменения транзакции А и снова выбрать данные в обеих транзакциях.
 5)	Удалить одну из новых записей (обозначим ее X) транзакцией А, прочитать таблицу транзакцией В.
 6)	Удалить вторую новую запись (Y) транзакцией В, прочитать данные.
-7)	Выполнить запрос в транзакции В на удаление первой из новых запи-сей (X).
+7)	Выполнить запрос в транзакции В на удаление первой из новых записей (X).
 8)	Выполнить запрос в транзакции А на удаление второй новой записи (Y).
 9)	Выполнить запрос в транзакции A на удаление записи X.
 10)	Зафиксировать изменения транзакции А.
 
 */
 
--- transaction A
+-- transaction B
 START TRANSACTION;
 
--- 1
+-- 1 B
  SELECT * FROM station;
 
--- 2
+-- 2 B
 
 INSERT INTO station 
-VALUES (,"",);
+VALUES (200, "Station 2", 200);
 SELECT * FROM station;
 
+-- 3 B
 
--- 3
+SELECT * FROM station;
+
+-- 4-1 B
 
 COMMIT;
 SELECT * FROM station;
 
-
--- 4
-/*
-
-*/
-
--- transaction B
-START TRANSACTION;
-
--- 1
- SELECT * FROM station;
-
--- 2
-
-INSERT INTO station 
-VALUES (,"",);
-SELECT * FROM station;
-
-
--- 3
+-- 4-1 B
 
 SELECT * FROM station;
+
+-- 5 B 
+
+SELECT * FROM station;
+
+-- 6 B
+
+DELETE FROM station 
+WHERE num_st = 200;
+
+SELECT * FROM station;
+
+-- 7 B
+
+DELETE FROM station 
+WHERE num_st = 100;
