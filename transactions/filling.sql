@@ -21,11 +21,18 @@ DELIMITER $$
 
 CREATE PROCEDURE sell_ticket(title_way VARCHAR(45), place INT, title_st VARCHAR(45))
 BEGIN
-	UPDATE Ticket SET Ticket.num_st = (SELECT Station.num_st FROM Station WHERE Station.title_st = title_st) 
-    WHERE Ticket.num_way = (SELECT Way.num_way FROM Way WHERE Way.title_way = title_way) AND Ticket.place = place;
+	IF (SELECT Ticket.num_st FROM Ticket WHERE Ticket.num_way = (SELECT Way.num_way FROM Way WHERE Way.title_way = title_way) AND Ticket.place = place) IS NULL THEN
+		UPDATE Ticket SET Ticket.num_st = (SELECT Station.num_st FROM Station WHERE Station.title_st = title_st) 
+		WHERE Ticket.num_way = (SELECT Way.num_way FROM Way WHERE Way.title_way = title_way) AND Ticket.place = place;
+	ELSE
+		SIGNAL SQLSTATE '45005'
+		SET MESSAGE_TEXT = 'Ошибка! Билет продан!';
+    END IF;
 END$$
 
 DELIMITER ;
+
+-- DROP PROCEDURE sell_ticket;
 
 -- CALL sell_ticket('Орел-Курск', 1, 'Курск')
 

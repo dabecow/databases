@@ -1,0 +1,21 @@
+-- Task 1
+
+SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+START TRANSACTION;
+
+CALL sell_ticket('Орел-Курск', 1, 'Курск');
+SELECT * FROM Ticket;
+
+COMMIT;
+
+-- Task 2
+
+SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+START TRANSACTION;
+
+
+
+CALL sell_ticket('Орел-Курск', 2, 'Курск');
+
+
+COMMIT;
